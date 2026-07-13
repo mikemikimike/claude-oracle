@@ -1,0 +1,4 @@
+# Shell scripts must stay LF so they run under Git Bash / bash regardless of the
+# local core.autocrlf setting (this repo is developed on Windows, autocrlf=true).
+# CRLF line endings append a stray \r to every command and break the script.
+*.sh text eol=lf

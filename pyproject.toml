@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-oracle"
+version = "4.6.0"
+description = "Multi-tier research orchestrator for Claude Code — cheap Haiku scouts, Sonnet synthesis, Opus judgment"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "sushiHex"}]
+dependencies = [
+    "claude-agent-sdk>=0.1.48",
+]
+
+[project.urls]
+Repository = "https://github.com/sushiHex/claude-oracle"
+Issues = "https://github.com/sushiHex/claude-oracle/issues"
+
+[project.scripts]
+claude-oracle = "claude_oracle.sdk:main_sync"
+claude-oracle-install = "claude_oracle.install:install"
+
+[project.optional-dependencies]
+github = []  # GitHub MCP requires npx (Node.js), not a Python dep
+test = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+claude_oracle = ["data/*.md"]

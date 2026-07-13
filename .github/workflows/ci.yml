@@ -1,0 +1,41 @@
+# Fresh-environment test matrix — the per-push gate.
+# Two failure classes matter here:
+#   1. Packaging rot that only surfaces on a clean install: undeclared
+#      dependencies, broken console-script / `__main__` entry points.
+#   2. Platform drift: the orchestrator's hardest code paths (config-dir
+#      isolation, temp dirs, launch gating) are exercised in production on
+#      Windows, so Windows runs in CI too — not just Linux.
+# Python matrix pins the supported floor (3.10) and the newest release the
+# maintainer actually runs (3.14).
+name: ci
+
+on:
+  push:
+    branches: [master, main]  # master = private dev; main = the public mirror
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.14"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package + test deps (fresh env)
+        run: pip install -e ".[test]"
+      - name: Run tests
+        run: python -m pytest tests/ -q
+      - name: Import + version
+        run: python -c "import claude_oracle; print('claude-oracle', claude_oracle.__version__)"
+      - name: Entry points resolve (console script + module)
+        run: |
+          claude-oracle --help
+          python -m claude_oracle --help
