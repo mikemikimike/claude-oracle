@@ -4,13 +4,16 @@
 
 Oracle turns a broad question into focused research tasks, sends them to Haiku scouts, and has Sonnet organize the results. Your session gets the findings, sources, disagreements, and gaps to build a better answer with its existing context.
 
-[Quick start](#quick-start) · [How it works](#how-it-works) · [For agents](#for-agents) · [Configuration](docs/configuration.md) · [Troubleshooting](docs/configuration.md#troubleshooting)
+With `--rounds`, your session adapts the research after each return and evolves one canonical report to final-draft quality while the next round runs.
+
+[Quick start](#quick-start) · [Adaptive rounds](#adaptive-research-rounds) · [How it works](#how-it-works) · [For agents](#for-agents) · [Configuration](docs/configuration.md)
 
 ## Why Oracle
 
 - **Cover more ground.** Run 1–8 research chains, normally ten scouts per chain, to investigate different angles in parallel.
 - **Keep the evidence useful.** Scouts are prompted to date sources and label confidence; Sonnet organizes each chain's full reports and calls out conflicts and missing information.
 - **Keep the final judgment in your session.** Each chain returns its own briefing. Your calling agent compares them and writes the final answer.
+- **Build on what you learn.** Later rounds investigate gaps and contradictions from earlier findings. The same canonical report grows stronger between rounds.
 
 Useful for comparing tools, mapping an unfamiliar ecosystem, checking repository activity, or surveying approaches before implementation. Start with one chain; add more when the question has several distinct areas to investigate.
 
@@ -30,9 +33,10 @@ In a Claude Code session:
 ```text
 /oracle compare Python background-job libraries for a small production service
 /oracle 4 map the tradeoffs between Redis, RabbitMQ, and managed task queues
+/oracle --rounds 3 compare Python background-job libraries for a small production service
 ```
 
-The optional leading number selects the chain count. One chain uses **10 Haiku scouts + 1 Sonnet organizer**; four use **40 + 4**. Your session plans the research using the conversation context, then presents the returned findings.
+The optional leading number selects the chain count. One chain uses **10 Haiku scouts + 1 Sonnet organizer per round**; four use **40 + 4**. Rounds default to **1**. Your session plans the research using the conversation context and maintains the canonical report.
 
 <details>
 <summary>Upgrade an existing installation</summary>
@@ -59,6 +63,10 @@ The `claude-oracle` console command is equivalent. Without supplied prompts, a S
 | Option | What it does |
 | --- | --- |
 | `--chains N`, `-c N` | Choose 1–8 chains; default `1`. Supplied JSON prompts determine their own chain count. |
+| `--rounds N` | Set the research round budget; default `1`. Multiple rounds create a resumable session and return control after each round. |
+| `--session-dir PATH` | Create a session at a new directory, including for a single round. Multiple rounds otherwise use `research/oracle-<unique-id>`. |
+| `--resume PATH` | Run the next round with a fresh JSON prompt array on stdin, using saved session settings. |
+| `--session-status PATH` | Print session progress as JSON without running models or reading stdin. |
 | `--verbose`, `-v` | Add per-scout tool activity to the progress log. |
 | `--report`, `-r` | Also save `oracle-report-YYYYMMDD-HHMMSS.md` in the current directory. |
 | `--local` | Grant scouts local `Read`, `Grep`, and `Glob` tools for repository research. |
@@ -67,7 +75,38 @@ The `claude-oracle` console command is equivalent. Without supplied prompts, a S
 
 The report goes to **stdout**; progress and diagnostics go to **stderr**. Reports include execution time, token usage, and scout/organizer error counts. Scouts use `HIGH` for directly sourced claims, `MEDIUM` for derived figures, and `LOW` for estimates. These are model assessments; verify consequential claims against their sources.
 
+## Adaptive research rounds
+
+```text
+/oracle 2 --rounds 3 evaluate durable workflow engines for our Python service
+```
+
+The `/oracle` skill manages the full workflow in your current session:
+
+1. **Investigate.** Plan and launch the first round with the user's context and constraints.
+2. **Adapt.** Read the returned evidence, then target the next round at unresolved questions, contradictions, and promising leads.
+3. **Strengthen.** While the next round runs, revise the same canonical report to **final-draft quality** using completed findings: integrate citations, replace stale claims, sharpen conclusions, and keep uncertainty visible.
+4. **Finish.** Incorporate the last round's findings in a final substantive revision and deliver the report.
+
+```mermaid
+flowchart LR
+    A[Question and context] --> B[Research round]
+    B --> C[Findings and gaps]
+    C --> D{Rounds remain?}
+    D -->|Yes| E[Adapt the next plan]
+    E --> B
+    E --> F[Strengthen canonical report<br/>while the next round runs]
+    D -->|No| G[Final revision and delivery]
+    F -. Same report .-> G
+```
+
+**One canonical report is the default.** It is updated in place between rounds; additional canonical documents are created only when you ask. Per-round plans, raw reports, and metrics remain available as supporting history.
+
+The active session supplies the judgment and writing—Fable or Astra are preferred orchestrators when available. Oracle does not launch a separate manager. The **CLI and Python API execute one round per call**; `/oracle` follows the orchestration loop for you. Agents integrating the CLI should follow the [managed-round protocol](docs/agent-usage.md#managed-rounds). Ordinary CLI calls without a session keep their existing single-round output.
+
 ## How it works
+
+Inside each research round:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
@@ -107,7 +146,7 @@ Read **[configuration and access boundaries](docs/configuration.md)** before ena
 
 ## Usage and reliability
 
-More chains increase model and tool usage. Oracle assigns broad searching to Haiku and organization to Sonnet; savings depend on the task. The displayed quota percentages are unofficial estimates based on fixed assumptions, not your account's remaining balance. `--usd` is SDK-reported usage, not a subscription invoice.
+More chains and rounds increase model and tool usage: two chains over three rounds normally dispatch **60 scouts and 6 organizers**, plus the orchestrating session's work. Oracle assigns broad searching to Haiku and organization to Sonnet; savings depend on the task. The displayed quota percentages are unofficial estimates based on fixed assumptions, not your account's remaining balance. `--usd` is SDK-reported usage, not a subscription invoice.
 
 Scouts have timeouts and a limited retry pass. Chains with no successful scouts skip organization. Some organizer failures preserve raw scout output; check the report for error or fallback sections before treating a run as complete. See [failure handling](docs/agent-usage.md#handle-results-and-failures).
 

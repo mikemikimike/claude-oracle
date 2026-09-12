@@ -1,6 +1,6 @@
 # Claude Oracle
 
-Pip-installable multi-tier research orchestrator for Claude Code. Cheap Haiku scouts, Sonnet synthesis, Opus judgment.
+Pip-installable research orchestrator for Claude Code. Haiku scouts, Sonnet organization, and caller-managed adaptive rounds.
 
 ## Stack
 - Python 3.10+, claude_agent_sdk >= 0.1.48
@@ -11,6 +11,7 @@ Pip-installable multi-tier research orchestrator for Claude Code. Cheap Haiku sc
 ```
 src/claude_oracle/
   sdk.py        — the engine (OracleSDK class)
+  rounds.py     — durable round sessions; caller owns planning and canonical.md
   install.py    — claude-oracle-install command
   __main__.py   — python -m claude_oracle
   data/SKILL.md — /oracle skill definition
