@@ -51,12 +51,15 @@ Temporary configuration directories are cleaned in `run()`'s `finally` block, in
 | Scout local tools | `Read`, `Grep`, and `Glob` are added only with `--local` or `OracleSDK(local_tools=True)`. Scouts explicitly disallow `Bash`, `Write`, `Edit`, `NotebookEdit`, and `Agent`. |
 | Other model stages | The fallback Architect and Sonnet organizers currently have local read tools regardless of the scout setting. |
 | Saved reports | `--report` writes a dated Markdown file in the current directory. You control where captured stdout and Python API results are stored. |
+| Round sessions | `--rounds N` for N > 1 or `--session-dir` saves settings, scout plans, returned reports, and metrics. The caller maintains `canonical.md`. Sessions default to a unique directory under `research/`. |
 
 `--local` controls scout tooling; it is not an OS sandbox or a repository-only boundary. Untrusted web material can try to steer agents into exposing local data. Run in an environment without accessible secrets when combining local and web research, and grant only the GitHub permissions the task needs.
 
 Chain isolation means Python supplies each organizer only its own chain's scout reports. It is a data-routing property, not a separate security boundary around the process. Oracle itself adds no separate telemetry service; Claude and the contacted services have their own data handling.
 
 Keep credentials and sensitive findings out of source control. This repository ignores `oracle-report-*.md` and keeps `research/` private; those exclusions do not automatically apply to other projects where you run Oracle.
+
+Each new round session includes a `.gitignore` that excludes its contents, including when you choose a directory outside `research/`. This is a Git convenience, not encryption or access control. Session metadata stores the research question and tool settings but no authentication tokens. Keep the full session when preserving private research, and resume with the same directory to retain the canonical report and round history.
 
 ## Troubleshooting
 
@@ -70,5 +73,9 @@ Keep credentials and sensitive findings out of source control. This repository i
 | Invalid JSON on stdin | Pass a saved UTF-8 JSON array, not Markdown fences or shell-escaped prose. Use the [agent guide's shell examples](agent-usage.md#execute). |
 | GitHub tools fail | Confirm `npx` is available and the token is present in the launching environment with suitable permissions. |
 | Report contains errors or raw scout output | Follow [failure handling](agent-usage.md#handle-results-and-failures); a successful process exit can still contain incomplete research. |
+| `--rounds 3` returns after one round | Expected: the current agent plans the next round and uses `--resume`. The `/oracle` skill manages this loop. See [managed rounds](agent-usage.md#managed-rounds). |
+| Session already has a round running | Keep observing that process and update the canonical report. Do not launch a duplicate; the OS releases the lock when the process exits. |
+| A crashed session still says `running` | Confirm its process exited, then resume with a fresh plan. The old attempt is retained as interrupted. |
+| Session directory already exists | Choose a new directory for new research; use `--resume` to continue existing research. |
 
 Use `--verbose` to capture tool activity alongside progress. When opening an issue, include the package version, OS, Python version, command shape, and sanitized diagnostics. Remove prompts, findings, paths, and credentials you do not intend to share.

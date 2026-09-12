@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "claude-oracle"
-version = "4.6.0"
-description = "Multi-tier research orchestrator for Claude Code — cheap Haiku scouts, Sonnet synthesis, Opus judgment"
+version = "4.7.0"
+description = "Adaptive research rounds for Claude Code — Haiku scouts, Sonnet organization, caller judgment"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

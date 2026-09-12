@@ -1,10 +1,10 @@
 """
-Oracle SDK v4.6.0 — Multi-tier research orchestrator (Claude Agent SDK).
+Oracle SDK v4.7.0 — Multi-tier research orchestrator (Claude Agent SDK).
 
   Phase 1: Smiths (N*10 parallel Haiku) -> web tools (WebSearch, WebFetch, optional
            GitHub MCP); local file tools (Read/Grep/Glob) only with --local
   Phase 2: Anderson (N parallel Sonnet) -> each sees ONLY its chain's Smiths, no truncation
-  Multi-chain: all Anderson reports returned directly to Opus (no merger phase).
+  Multi-chain: all Anderson reports returned directly to the caller (no merger phase).
 
 Prompts are piped via stdin as JSON. The calling session (Claude Code)
 generates the prompts using its full conversation context — no Architect needed.
@@ -28,6 +28,8 @@ import time
 from dataclasses import dataclass, field
 
 from claude_agent_sdk import query, ClaudeAgentOptions
+
+from .rounds import DEFAULT_ROUNDS, RoundSession
 
 # Fix Windows console encoding (guarded: stdout/stderr may be a pipe or a
 # capture object without .reconfigure — importing the package must not crash).
@@ -384,6 +386,7 @@ class OracleSDK:
         # questions about the local codebase.
         self.local_tools = local_tools
         self.metrics = OracleMetrics()
+        self.planned_prompts: list[dict] = []
         self._active_scouts: dict[int, str] = {}  # scout_id -> status
         self._has_architect = False  # set when Architect phase runs
         self._iso_root: str | None = None  # per-run base dir for isolated configs
@@ -761,17 +764,17 @@ GitHub MCP tools available — prefer these over WebSearch for repo data:
 - GAPS: Note uncovered topics
 - CORRECT: Fix obvious errors"""
 
-        prompt = f"""Organize {len(scout_results)} Smith reports{f' (Chain {chain})' if self.chains > 1 else ''} for Opus synthesis.
+        prompt = f"""Organize {len(scout_results)} Smith reports{f' (Chain {chain})' if self.chains > 1 else ''} for the calling session's synthesis.
 
 {triage}
 
 {scout_data}
 
-IMPORTANT: Preserve all findings — do NOT cut for brevity. Your output goes directly to Opus.
+IMPORTANT: Preserve all findings — do NOT cut for brevity. Your output goes directly to the calling session.
 Dedup overlapping facts, correct errors, flag disputes, but keep all unique signal.
 
 Output: All findings (grouped by theme, with confidence + Smith #), Corrections, Disputes, Gaps.
-Organize, don't compress — Opus will do the editorial judgment."""
+Organize, don't compress — the calling session will do the editorial judgment."""
 
         try:
             result_text = ""
@@ -779,7 +782,7 @@ Organize, don't compress — Opus will do the editorial judgment."""
             anderson_opts = {
                 "model": MODEL_SONNET,
                 "allowed_tools": ["Read", "Grep", "Glob"],
-                "system_prompt": "You are Anderson. Organize Smith reports into structured findings. Preserve all unique signal — Opus handles final synthesis.",
+                "system_prompt": "You are Anderson. Organize Smith reports into structured findings. Preserve all unique signal — the calling session handles final synthesis.",
             }
             iso_env = self._isolated_env(f"anderson-{chain}")
             if iso_env:
@@ -894,6 +897,7 @@ Organize, don't compress — Opus will do the editorial judgment."""
 
     async def _run_inner(self, question: str, prompts: list[dict] | None = None) -> str:
         self.metrics = OracleMetrics(start_time=time.time())
+        self.planned_prompts = []
 
         if prompts:
             # Normalize (idempotent) and validate library-supplied prompts, so the
@@ -907,6 +911,7 @@ Organize, don't compress — Opus will do the editorial judgment."""
             # Fallback: use built-in Architect to decompose
             prompts = await self.decompose(question)
 
+        self.planned_prompts = prompts
         # Phase 2: Scout (all parallel, bounded)
         scout_results = await self.scout(prompts)
 
@@ -935,7 +940,7 @@ Organize, don't compress — Opus will do the editorial judgment."""
                 else:
                     report = f"ERROR: {r.error}"
             else:
-                # Multi-chain: return all Anderson reports directly to the Opus session.
+                # Multi-chain: return all Anderson reports directly to the calling session.
                 chain_reports = []
                 for r in compressor_results:
                     if not r.error:
@@ -961,7 +966,7 @@ Organize, don't compress — Opus will do the editorial judgment."""
             parts.append("Architect")
         parts.append(f"{self.scouts_total} Smiths")
         parts.append(f"{self.chains} Anderson{'s' if self.chains > 1 else ''}")
-        parts.append("Opus (you)")
+        parts.append("Caller (you)")
         arch = " -> ".join(parts)
         if self.show_dollars:
             cost_line = f"- Total cost: ${total.cost_usd:.4f}"
@@ -997,8 +1002,18 @@ async def _async_main():
         description="Oracle SDK — Multi-tier research orchestrator with true isolation"
     )
     parser.add_argument("question", nargs="?", default="", help="Research question")
-    parser.add_argument("--chains", "-c", type=int, default=DEFAULT_CHAINS,
+    parser.add_argument("--chains", "-c", type=int,
         help=f"Number of chains, 1-{MAX_CHAINS} (default: {DEFAULT_CHAINS})")
+    parser.add_argument("--rounds", type=int,
+        help="Orchestrator-managed research rounds (default: 1); returns after "
+             "each round so the caller can adapt the next plan")
+    session_options = parser.add_mutually_exclusive_group()
+    session_options.add_argument("--session-dir",
+        help="Create a new session here (default for multiple rounds: research/oracle-<unique-id>)")
+    session_options.add_argument("--resume", metavar="SESSION",
+        help="Run the next round of a saved session with fresh JSON prompts on stdin")
+    session_options.add_argument("--session-status", metavar="SESSION",
+        help="Print a session's progress as JSON without running models or reading stdin")
     parser.add_argument("--verbose", "-v", action="store_true", help="Show tool activity per scout")
     parser.add_argument("--local", action="store_true",
         help="Grant scouts local file tools (Read/Grep/Glob) for questions about "
@@ -1007,6 +1022,28 @@ async def _async_main():
     parser.add_argument("--usd", action="store_true", help="Show costs in USD instead of quota %%")
     parser.add_argument("--report", "-r", action="store_true", help="Save report to a dated file")
     args = parser.parse_args()
+
+    if args.rounds is not None and args.rounds < 1:
+        parser.error("--rounds must be a positive integer")
+    if (args.resume or args.session_status) and (
+        args.question or args.rounds is not None
+        or args.chains is not None or args.local or args.usd
+    ):
+        parser.error("Saved sessions use their original question, rounds, chains, and tool settings")
+    if args.rounds is None:
+        args.rounds = DEFAULT_ROUNDS
+    if args.chains is None:
+        args.chains = DEFAULT_CHAINS
+    if args.session_status:
+        try:
+            session = RoundSession.open(args.session_status)
+            state = session.status()
+            state["directory"] = str(session.path)
+            print(json.dumps(state, indent=2, ensure_ascii=False))
+        except (OSError, ValueError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            sys.exit(1)
+        return
 
     prompts = None
     if not sys.stdin.isatty():
@@ -1023,32 +1060,42 @@ async def _async_main():
                 print(f"ERROR: {e}", file=sys.stderr)
                 sys.exit(1)
 
-    if not prompts and not args.question:
+    if not prompts and not args.question and not args.resume:
         parser.error("Either pipe prompts via stdin or provide a question argument")
+    if args.resume and not prompts:
+        parser.error("--resume requires a fresh JSON prompt array on stdin")
 
     try:
-        oracle = OracleSDK(
-            chains=len(set(p["chain"] for p in prompts)) if prompts else args.chains,
-            verbose=args.verbose,
-            show_dollars=args.usd,
-            local_tools=args.local,
-        )
-    except ValueError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    # Banner — actual Smith count: piped prompts as-is, else chains * SCOUTS_PER_CHAIN.
-    n_smiths = len(prompts) if prompts else oracle.chains * SCOUTS_PER_CHAIN
-    parts = []
-    if not prompts:
-        parts.append("Architect")
-    parts.append(f"{n_smiths} Smiths")
-    parts.append(f"{oracle.chains} Anderson{'s' if oracle.chains > 1 else ''}")
-    parts.append("Opus (you)")
-    print(f"Oracle SDK v4.6.0 -- {' -> '.join(parts)}", file=sys.stderr)
-
-    try:
-        report = await oracle.run(args.question, prompts=prompts)
+        if args.resume:
+            session = RoundSession.open(args.resume)
+            report = await session.run_round(prompts, verbose=args.verbose)
+        elif args.rounds > 1 or args.session_dir:
+            session = RoundSession.create(
+                args.question or "Research from supplied prompts",
+                rounds=args.rounds,
+                chains=len(set(p["chain"] for p in prompts)) if prompts else args.chains,
+                directory=args.session_dir,
+                local_tools=args.local,
+                show_dollars=args.usd,
+            )
+            report = await session.run_round(prompts, verbose=args.verbose)
+        else:
+            oracle = OracleSDK(
+                chains=len(set(p["chain"] for p in prompts)) if prompts else args.chains,
+                verbose=args.verbose,
+                show_dollars=args.usd,
+                local_tools=args.local,
+            )
+            # Banner — piped prompts retain their actual scout count.
+            n_smiths = len(prompts) if prompts else oracle.chains * SCOUTS_PER_CHAIN
+            parts = []
+            if not prompts:
+                parts.append("Architect")
+            parts.append(f"{n_smiths} Smiths")
+            parts.append(f"{oracle.chains} Anderson{'s' if oracle.chains > 1 else ''}")
+            parts.append("Caller (you)")
+            print(f"Oracle SDK v4.7.0 -- {' -> '.join(parts)}", file=sys.stderr)
+            report = await oracle.run(args.question, prompts=prompts)
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
