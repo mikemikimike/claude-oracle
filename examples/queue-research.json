@@ -1,0 +1,42 @@
+[
+  {
+    "dimension": "Python clients",
+    "prompt": "Compare the official or actively maintained Python clients for Redis Streams and RabbitMQ. Find documentation for synchronous and async workers, and identify which projects maintain each client."
+  },
+  {
+    "dimension": "delivery guarantees",
+    "prompt": "Compare Redis Streams and RabbitMQ delivery guarantees for Python workers. Use official documentation and distinguish acknowledgements, redelivery, and duplicate processing."
+  },
+  {
+    "dimension": "durability",
+    "prompt": "Compare persistence and crash recovery for Redis Streams and RabbitMQ quorum queues. Identify documented configuration requirements and cases where acknowledged data can be lost."
+  },
+  {
+    "dimension": "ordering",
+    "prompt": "Compare message ordering in Redis Streams consumer groups and RabbitMQ queues. Focus on multiple workers, redelivery, and what applications must do to preserve per-key order."
+  },
+  {
+    "dimension": "retries",
+    "prompt": "Compare retry and dead-letter handling for Redis Streams and RabbitMQ. Identify built-in mechanisms and which parts a Python worker must implement. Use official documentation."
+  },
+  {
+    "dimension": "backpressure",
+    "prompt": "Compare how Redis Streams and RabbitMQ handle slow consumers and growing backlogs. Find documented controls for retention, queue limits, and worker prefetch."
+  },
+  {
+    "dimension": "observability",
+    "prompt": "Compare built-in monitoring for Redis Streams and RabbitMQ. Find ways to inspect queue depth, consumer lag, failed deliveries, and worker health in official documentation."
+  },
+  {
+    "dimension": "high availability",
+    "prompt": "Compare failover behavior for Redis Streams and RabbitMQ quorum queues. Focus on client reconnection, replication requirements, and consequences for running Python workers."
+  },
+  {
+    "dimension": "operations",
+    "prompt": "Compare documented backup, restore, and rolling-upgrade procedures for Redis and RabbitMQ when used as task brokers. Identify operational constraints relevant to a small engineering team."
+  },
+  {
+    "dimension": "security",
+    "prompt": "Compare documented TLS, authentication, and access-control options for Redis Streams and RabbitMQ. Focus on giving Python workers only the permissions needed to consume and acknowledge tasks."
+  }
+]
