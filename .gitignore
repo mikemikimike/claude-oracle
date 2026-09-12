@@ -12,8 +12,7 @@ venv/
 # Oracle report outputs (`--report` writes dated files)
 oracle-report-*.md
 
-# Private by policy — never publish, even when a content audit clears them.
-# research/ holds Oracle reports, findings, analysis, and any raw session
-# captures — the maintainer's private working notes. Excluded here AND in
-# scripts/publish_mirror.sh (belt-and-suspenders). See CLAUDE.md "Public mirror".
+# Private reports, findings, analysis, and raw session captures stay out of
+# this public repository. Preserve private data in claude-oracle-private.
+# See CLAUDE.md "Repository workflow".
 research/

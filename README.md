@@ -1,129 +1,128 @@
 # Claude Oracle
 
-A **multi-tier research orchestrator** for [Claude Code](https://claude.com/claude-code). It fans a research question out across many cheap [Haiku](https://www.anthropic.com/claude/haiku) scouts running in parallel, has [Sonnet](https://www.anthropic.com/claude/sonnet) organize their findings, and delivers a single structured briefing back to your [Opus](https://www.anthropic.com/claude/opus) session — roughly **10× the research breadth at a fraction of Opus-only cost**.
+**Parallel research for Claude Code. Bring the findings back to your conversation.**
 
-The trick is tiering the work by how hard it is: breadth-first search is cheap and embarrassingly parallel (Haiku), synthesis needs judgment (Sonnet), and the final editorial call is yours (Opus, i.e. your live session).
+Oracle turns a broad question into focused research tasks, sends them to Haiku scouts, and has Sonnet organize the results. Your session gets the findings, sources, disagreements, and gaps to build a better answer with its existing context.
 
-```
-You → Opus (decomposes) → 10–80 Haiku "Smiths" (parallel scout) → Sonnet "Anderson" (organize) → briefing
-```
+[Quick start](#quick-start) · [How it works](#how-it-works) · [For agents](#for-agents) · [Configuration](docs/configuration.md) · [Troubleshooting](docs/configuration.md#troubleshooting)
 
-## What it does
+## Why Oracle
 
-- **Parallel breadth** — 1 chain (10 Smiths) up to 8 chains (80 Smiths), each Smith a Haiku agent with `WebSearch`, `WebFetch`, and optional GitHub MCP. Local file tools (`Read`/`Grep`/`Glob`) are opt-in via `--local` — see [Privacy](#privacy).
-- **True isolation, enforced in Python** — in multi-chain mode each Sonnet "Anderson" sees **only** its own chain's Smith reports; the orchestrator groups the data by chain so no compressor ever sees another chain's firehose. The isolation is structural, not a prompt instruction.
-- **Confidence-tagged findings** — every scout is told to tag numbers `HIGH` / `MEDIUM` / `LOW` and date its sources, so recency and provenance survive all the way to your briefing.
-- **Resilient by design** — per-Smith and per-Anderson timeouts, a startup launch gate (or full config isolation — see [Concurrency safety](#concurrency-safety--fast-launches)) so parallel subprocesses never collide on shared startup state, a one-shot retry pass for failed Smiths, an all-scouts-failed guard, and a raw-Smith fallback so a failed Anderson never discards its chain's scout work.
-- **Live GitHub data (optional)** — set a PAT and Smiths prefer GitHub MCP over web search for stars, commits, and issues.
+- **Cover more ground.** Run 1–8 research chains, normally ten scouts per chain, to investigate different angles in parallel.
+- **Keep the evidence useful.** Scouts are prompted to date sources and label confidence; Sonnet organizes each chain's full reports and calls out conflicts and missing information.
+- **Keep the final judgment in your session.** Each chain returns its own briefing. Your calling agent compares them and writes the final answer.
 
-## Requirements
+Useful for comparing tools, mapping an unfamiliar ecosystem, checking repository activity, or surveying approaches before implementation. Start with one chain; add more when the question has several distinct areas to investigate.
 
-- [Claude Code](https://claude.com/claude-code) with an active subscription (Oracle drives subagents through it)
-- Python 3.10+
-- Node.js — only if you want the optional GitHub MCP tools (`npx`)
+## Quick start
 
-## Install
+You need **Python 3.10+**, **Git** for the install command below, and **[Claude Code](https://claude.com/claude-code) installed and signed in** with a subscription that supports it. Node.js is needed only for the optional GitHub MCP integration. If your Python 3 command is `python3`, use it in place of `python` below.
 
-```bash
-pip install git+https://github.com/sushiHex/claude-oracle.git
-claude-oracle-install
+```sh
+python -m pip install git+https://github.com/sushiHex/claude-oracle.git
+python -m claude_oracle.install
 ```
 
-`claude-oracle-install` copies the `/oracle` skill into your own `~/.claude/skills/oracle/` so it's available in any Claude Code session on your machine.
+The installer adds `/oracle` to `~/.claude/skills/oracle/`, available across your Claude Code projects. It installs a skill file and a small launcher that delegates to the Python package.
 
-> If `claude-oracle-install` isn't found (pip's Scripts directory is often not on PATH, especially on Windows user installs), the module forms work unconditionally:
->
-> ```bash
-> python -m claude_oracle.install     # same as claude-oracle-install
-> python -m claude_oracle "question"  # same as claude-oracle
-> ```
+In a Claude Code session:
 
-## Usage
-
-In a Claude Code session, `/oracle` lets *your* session act as the Architect — it decomposes the question using full conversation context, then runs the fleet:
-
-```
-/oracle what open-source AI agent frameworks exist on GitHub
-/oracle 4 compare cloud providers for LLM hosting
+```text
+/oracle compare Python background-job libraries for a small production service
+/oracle 4 map the tradeoffs between Redis, RabbitMQ, and managed task queues
 ```
 
-A leading number sets the chain count (default 1); more chains = wider coverage.
+The optional leading number selects the chain count. One chain uses **10 Haiku scouts + 1 Sonnet organizer**; four use **40 + 4**. Your session plans the research using the conversation context, then presents the returned findings.
 
-### Direct CLI
+<details>
+<summary>Upgrade an existing installation</summary>
 
-```bash
-claude-oracle "your research question"          # Sonnet Architect decomposes for you
-claude-oracle --chains 4 "your question"        # 4 chains → 40 Smiths
-claude-oracle --verbose "your question"         # stream per-Smith tool activity
-claude-oracle --report "your question"          # also save a dated report file
-claude-oracle --local "audit my repo's tests"   # grant scouts local file tools (see Privacy)
+```sh
+python -m pip install --upgrade git+https://github.com/sushiHex/claude-oracle.git
+python -m claude_oracle.install
 ```
 
-You can also pipe a ready-made decomposition as JSON on stdin (this is what the `/oracle` skill does under the hood):
+Run both commands with the Python environment you use for Oracle. Reinstalling the skill refreshes its instructions as well as its launcher.
 
-```bash
-python -m claude_oracle --verbose <<'PROMPTS'
-[{"dimension": "frameworks", "prompt": "Find the top 3 open-source agent frameworks on GitHub with stars and what each exposes."}]
-PROMPTS
+</details>
+
+## Run from a terminal
+
+```sh
+python -m claude_oracle "compare Python background-job libraries"
+python -m claude_oracle --chains 4 --verbose --report "compare task queue architectures"
+python -m claude_oracle --local "map this repository's testing gaps"
 ```
+
+The `claude-oracle` console command is equivalent. Without supplied prompts, a Sonnet **Architect** decomposes your question first. This separate invocation receives the question you pass, not your conversation history.
+
+| Option | What it does |
+| --- | --- |
+| `--chains N`, `-c N` | Choose 1–8 chains; default `1`. Supplied JSON prompts determine their own chain count. |
+| `--verbose`, `-v` | Add per-scout tool activity to the progress log. |
+| `--report`, `-r` | Also save `oracle-report-YYYYMMDD-HHMMSS.md` in the current directory. |
+| `--local` | Grant scouts local `Read`, `Grep`, and `Glob` tools for repository research. |
+| `--usd` | Show the SDK-reported dollar cost instead of Oracle's estimated quota percentages. |
+| `--help` | Show the command reference without starting research. |
+
+The report goes to **stdout**; progress and diagnostics go to **stderr**. Reports include execution time, token usage, and scout/organizer error counts. Scouts use `HIGH` for directly sourced claims, `MEDIUM` for derived figures, and `LOW` for estimates. These are model assessments; verify consequential claims against their sources.
 
 ## How it works
 
-1. **Decompose** — your Opus session (or the fallback Sonnet Architect) splits the question into `chains × 10` narrow sub-prompts, each a single dimension a Haiku agent can fully answer in ~1,500 tokens.
-2. **Scout** — all Smiths run concurrently, each searching a different slice, reporting dense facts + confidence tags.
-3. **Organize** — one Sonnet Anderson per chain dedups, reconciles conflicting/stale numbers, flags disputes and gaps, and preserves every unique signal (it organizes, it does not compress away findings).
-4. **Synthesize** — the Anderson briefing(s) return to your session, where you (Opus) do the final editorial judgment.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/architecture.svg">
+  <img src="docs/architecture.svg" alt="Your session or a Sonnet Architect plans the research. Each chain runs ten Haiku scouts, then a Sonnet organizer receives only that chain's reports. Separate chain briefings return to the caller for final synthesis." width="1120">
+</picture>
 
-## Concurrency safety & fast launches
+1. **Plan.** Your session creates focused prompts, or the CLI asks Sonnet to do it.
+2. **Research.** Haiku scouts gather evidence concurrently. Python groups their reports by chain and passes successful reports in full to that chain's Sonnet organizer.
+3. **Return.** Organizers are asked to produce findings, corrections, disputes, and gaps. All chain briefings return to the caller; Oracle does not run an additional cross-chain merger or launch Opus.
 
-Claude Code's shared `~/.claude.json` is written non-atomically, so many CLI subprocesses starting at once can tear it — a [long-reported upstream bug](https://github.com/anthropics/claude-code/issues/28847) (also [#28806](https://github.com/anthropics/claude-code/issues/28806), [#29051](https://github.com/anthropics/claude-code/issues/29051), [#40226](https://github.com/anthropics/claude-code/issues/40226)) that we have reproduced on current CLI versions at ~20-way concurrency. Oracle defends itself in one of two modes:
+In the logs, scouts are **Smiths**, organizers are **Andersons**, and the planner is the **Architect**. These names describe roles; chain isolation is enforced by the Python orchestration.
 
-**Isolated mode (automatic — zero setup).** When your Claude Code login's current access token has at least an hour of life left (it usually does), every Smith/Anderson automatically gets its own throwaway `CLAUDE_CONFIG_DIR` authenticated with that short-lived token: no shared file, no race, no gate — the whole fleet launches instantly. Only the access token is passed to child processes; **the refresh token never leaves your primary credential store**, so children structurally cannot rotate or damage your login. Config dirs are deleted after the run (crash-safe).
+## For agents
 
-**Gated mode (automatic fallback).** Near token expiry, or when no credentials file exists (e.g. macOS Keychain-only setups), Oracle falls back to a launch gate: one subprocess enters its startup window at a time, opening for the next as soon as the current one emits its first message. A few seconds of ramp per Smith; fully parallel once started; a retry pass relaunches any Smith that still fails.
+Use `/oracle` inside Claude Code, or call the CLI from any agent that can launch local processes in the authenticated environment. Oracle is a Python package and CLI, not an MCP server.
 
-**Optional override (CI / headless / Keychain setups).** A long-lived token forces isolated mode everywhere:
+For control over the research plan, write a UTF-8 JSON array to a file and pass it on **stdin**. Each entry has a `dimension` and a `prompt`. For predictable automatic grouping, supply exactly `10 × chains` entries (10–80). Oracle skips the Architect, assigns IDs, and routes these complete batches into consecutive chains of ten.
 
-```bash
-claude setup-token   # one-time browser approval; requires a Pro/Max/Team plan
+Partial unlabeled batches have different routing: **11–19 prompts all go to chain A**. To request uneven chain sizes, set explicit `chain` labels and unique IDs on every entry. See [prompt grouping](docs/agent-usage.md#prompt-grouping) for the rules and examples.
 
-# Windows
-setx ORACLE_OAUTH_TOKEN "<token>"
+See the **[agent integration guide](docs/agent-usage.md)** for a complete prompt file, Bash and PowerShell commands, Python integration, and output/error handling. Carry the relevant conversation context into each prompt; scouts do not inherit it automatically.
 
-# Linux / macOS
-echo 'export ORACLE_OAUTH_TOKEN="<token>"' >> ~/.bashrc
+## Configuration and privacy
+
+Ordinary use needs no Oracle-specific token setup. Oracle uses your Claude Code authentication. Optional settings:
+
+| Setting | Purpose |
+| --- | --- |
+| `GITHUB_PAT` | Enable the pinned GitHub MCP server through `npx` for repository research. Limit the token's permissions. |
+| `ORACLE_OAUTH_TOKEN` | Supply an Oracle-specific OAuth token for isolated subprocess configuration. |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Also accepted; Oracle's own token takes precedence when both are set. |
+
+**Research leaves your machine.** Prompts and findings are processed by Claude; web searches and fetches contact external services. Local tools are opt-in **for scouts**. The Architect and Anderson currently have local read tools independently of `--local`; this flag is not a filesystem sandbox for the whole pipeline. Combining local reads with untrusted web content can expose sensitive files through prompt injection.
+
+Read **[configuration and access boundaries](docs/configuration.md)** before enabling local research or GitHub access. That guide also explains automatic startup isolation, credential handling, and recovery.
+
+## Usage and reliability
+
+More chains increase model and tool usage. Oracle assigns broad searching to Haiku and organization to Sonnet; savings depend on the task. The displayed quota percentages are unofficial estimates based on fixed assumptions, not your account's remaining balance. `--usd` is SDK-reported usage, not a subscription invoice.
+
+Scouts have timeouts and a limited retry pass. Chains with no successful scouts skip organization. Some organizer failures preserve raw scout output; check the report for error or fallback sections before treating a run as complete. See [failure handling](docs/agent-usage.md#handle-results-and-failures).
+
+## Development
+
+Develop code and documentation in [sushiHex/claude-oracle](https://github.com/sushiHex/claude-oracle), with pull requests targeting `main`. Keep private research and report data out of public contributions.
+
+```sh
+python -m pip install -e ".[test]"
+python -m pytest tests/ -q
+python -m claude_oracle --help
 ```
 
-`ORACLE_OAUTH_TOKEN` is preferred because it changes nothing about how your interactive `claude` sessions authenticate; a directly exported `CLAUDE_CODE_OAUTH_TOKEN` also works and takes priority over the automatic session token. Usage always counts against your subscription limits.
-
-> **Treat the token like a password.** It is a ~1-year credential to your Claude subscription: don't commit it, don't paste it into shell commands that land in history (use your OS's env-var UI or a secrets manager if unsure), and revoke it from your Claude account settings if it leaks. Do **not** copy `.credentials.json` between config dirs as an alternative — parallel copies refresh OAuth tokens independently and can invalidate your primary login.
-
-## Privacy
-
-Oracle is an orchestrator, not a local tool — it works by making model and tool calls on your behalf. Be aware that:
-
-- **Prompts go to Anthropic.** Your question and the generated sub-prompts are sent to Claude models through your Claude Code authentication, exactly like any other Claude Code session.
-- **Scouts touch the open web.** Smiths use `WebSearch` / `WebFetch`, so sub-prompt search terms and fetched URLs reach search and web providers.
-- **GitHub is opt-in.** If you set `GITHUB_PAT`, Smiths query the GitHub API with *your* token (`public_repo` scope, or `repo` for private repos) via a version-pinned MCP server. Unset, no GitHub calls are made.
-- **Your credential store is read, never copied.** For automatic isolated mode the orchestrator reads `accessToken`/`expiresAt` from your own Claude Code credentials file — the same file the `claude` CLI itself reads — and passes only that short-lived access token to the subprocesses it spawns on your behalf. The refresh token is never read, never copied, and never leaves your machine's primary store.
-- **Local file access is opt-in (`--local`).** By default scouts are web-only. With `--local` they can also `Read`/`Grep`/`Glob` your filesystem to research your own code — understand the trade-off: scouts process untrusted web content non-interactively, and combining local reads with web fetches creates a prompt-injection exfiltration surface (a malicious page could try to steer a scout into fetching a URL that embeds local file contents). Model safety training resists this, but it is not an architectural guarantee — use `--local` only for questions about your own codebase, and never in a checkout containing secrets.
-
-The orchestration logic itself runs locally; only the model/tool calls above leave your machine. No separate telemetry is collected.
-
-### GitHub MCP (optional)
-
-```bash
-# Windows
-setx GITHUB_PAT "ghp_your_token_here"
-
-# Linux / macOS
-echo 'export GITHUB_PAT="ghp_your_token_here"' >> ~/.bashrc
-```
-
-## Cost
-
-Rough order of magnitude for a single-chain run (10 Smiths + 1 Anderson): tens of thousands of Haiku-rate tokens plus a few thousand Sonnet-rate — a small fraction of what equivalent breadth would cost if every scout were an Opus agent. Actual figures depend on your plan; treat the in-tool percentages as approximate and unofficial.
+Tests mock model calls and isolate credentials; they do not run live research. CI covers Python 3.10 and 3.14 on Ubuntu and Windows. Package code lives in `src/claude_oracle/`; see [CLAUDE.md](CLAUDE.md) for maintenance conventions.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE).
