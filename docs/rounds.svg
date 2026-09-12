@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="760" viewBox="0 0 1120 760" role="img" aria-labelledby="title desc">
+  <title id="title">Claude Oracle adaptive research rounds</title>
+  <desc id="desc">The current session controls the research loop. It sets a round budget that defaults to one, plans each round from completed evidence, and launches Oracle. Oracle returns findings at the end of each round. The session plans a later round only from completed evidence, while revising the same canonical report to final-draft quality with completed findings. After the last findings return, the session makes a final substantive revision and delivers the report.</desc>
+  <!-- Editable vector artwork. The light and dark variants share the same layout. -->
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L6 4 L1 7" fill="none" stroke="#91ac99" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker>
+    <style>
+      text { font-family: 'Segoe UI', Arial, sans-serif; fill: #20372e; }
+      .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 1.55px; fill: #586d61; }
+      .title { font-size: 30px; font-weight: 600; letter-spacing: -.6px; }
+      .heading { font-size: 21px; font-weight: 600; }
+      .body { font-size: 16px; fill: #586d61; }
+      .small { font-size: 14px; fill: #586d61; }
+      .accent { fill: #277354; }
+      .flow { fill: none; stroke: #91ac99; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
+      .line { fill: none; stroke: #91ac99; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+  <rect x=".5" y=".5" width="1119" height="759" rx="20" fill="#f5f7f3" stroke="#d8e1d8"/>
+
+  <text x="40" y="40" class="eyebrow">CLAUDE ORACLE / ADAPTIVE RESEARCH</text>
+  <text x="40" y="82" class="title">Research returns. Your session decides what comes next.</text>
+  <rect x="900" y="24" width="180" height="30" rx="15" fill="#e7f1e8"/>
+  <text x="990" y="44" class="eyebrow accent" text-anchor="middle">ROUNDS DEFAULT TO 1</text>
+  <text x="40" y="113" class="body">Each later round follows completed evidence; the canonical report becomes stronger while research continues.</text>
+
+  <rect x="40" y="146" width="390" height="354" rx="16" fill="#ffffff" stroke="#d8e1d8"/>
+  <text x="64" y="178" class="eyebrow accent">YOUR SESSION / CONTROLS THE LOOP</text>
+  <text x="64" y="210" class="heading">Set the scope, plan, adapt, and write.</text>
+  <rect x="64" y="232" width="342" height="56" rx="10" fill="#f7f9f5" stroke="#d8e1d8"/>
+  <text x="84" y="256" class="eyebrow">ROUND BUDGET</text>
+  <text x="84" y="277" class="body">1 by default · more only when you ask</text>
+
+  <rect x="64" y="310" width="342" height="90" rx="10" fill="#eef5ee" stroke="#cfe0d1"/>
+  <text x="84" y="335" class="eyebrow accent">PLAN THIS ROUND</text>
+  <text x="84" y="361" class="heading">Target the next useful questions</text>
+  <text x="84" y="385" class="small">Conversation context + completed evidence</text>
+  <text x="84" y="416" class="small">If rounds remain, adapt the next plan.</text>
+  <rect x="64" y="430" width="342" height="52" rx="10" fill="#f7f9f5" stroke="#d8e1d8"/>
+  <text x="84" y="453" class="eyebrow">ADAPT AFTER RETURN</text>
+  <text x="84" y="474" class="body">Gaps · contradictions · promising leads</text>
+
+  <rect x="454" y="146" width="626" height="354" rx="16" fill="#ffffff" stroke="#d8e1d8"/>
+  <text x="478" y="178" class="eyebrow accent">ORACLE / ONE ROUND PER CALL</text>
+  <text x="478" y="210" class="heading">Execute the plan and return evidence.</text>
+  <rect x="478" y="232" width="578" height="108" rx="12" fill="#f7f9f5" stroke="#d8e1d8"/>
+  <text x="502" y="258" class="eyebrow">ROUND N</text>
+  <text x="502" y="289" class="heading">Focused research runs concurrently</text>
+  <text x="502" y="315" class="body">Scouts investigate in parallel; organizers return findings, disputes, and gaps.</text>
+  <rect x="478" y="365" width="578" height="87" rx="12" fill="#e7f1e8" stroke="#cfe0d1"/>
+  <text x="502" y="391" class="eyebrow accent">ROUND N COMPLETE</text>
+  <text x="502" y="420" class="heading">Findings return to your session</text>
+  <text x="502" y="440" class="small">Evidence is available for review, planning, and writing.</text>
+  <text x="1040" y="391" class="small" text-anchor="end">THEN DECIDE</text>
+
+  <path class="flow" d="M406 355 H445 V286 H470"/>
+  <path class="flow" d="M767 340 V356"/>
+  <path class="flow" d="M478 408 H445 V456 H414"/>
+  <path class="flow" d="M64 456 H52 V355 H58"/>
+
+  <rect x="40" y="555" width="1040" height="165" rx="16" fill="#e9eee6" stroke="#d8e1d8"/>
+  <text x="64" y="586" class="eyebrow accent">ONE CANONICAL REPORT / YOUR SESSION OWNS IT</text>
+  <rect x="64" y="606" width="480" height="86" rx="11" fill="#ffffff" stroke="#d8e1d8"/>
+  <text x="86" y="632" class="eyebrow">BETWEEN ROUNDS</text>
+  <text x="86" y="661" class="heading">Strengthen to final-draft quality</text>
+  <text x="86" y="682" class="small">Use completed evidence while the next round runs</text>
+  <rect x="576" y="606" width="480" height="86" rx="11" fill="#eef5ee" stroke="#cfe0d1"/>
+  <text x="598" y="632" class="eyebrow accent">AFTER THE LAST RETURN</text>
+  <text x="598" y="661" class="heading">Final revision → deliver</text>
+  <text x="598" y="682" class="small">Incorporate the last findings and finish the report</text>
+  <path class="flow" d="M64 345 H22 V649 H58"/>
+  <path class="flow" d="M1056 408 H1094 V649 H1062"/>
+  <text x="1068" y="482" class="small" text-anchor="end">last round</text>
+  <text x="40" y="746" class="eyebrow">PLAN · RETURN · ADAPT · WRITE</text>
+  <text x="1080" y="746" class="small" text-anchor="end">Per-round history remains supporting detail</text>
+</svg>

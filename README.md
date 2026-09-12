@@ -88,17 +88,11 @@ The `/oracle` skill manages the full workflow in your current session:
 3. **Strengthen.** While the next round runs, revise the same canonical report to **final-draft quality** using completed findings: integrate citations, replace stale claims, sharpen conclusions, and keep uncertainty visible.
 4. **Finish.** Incorporate the last round's findings in a final substantive revision and deliver the report.
 
-```mermaid
-flowchart LR
-    A[Question and context] --> B[Research round]
-    B --> C[Findings and gaps]
-    C --> D{Rounds remain?}
-    D -->|Yes| E[Adapt the next plan]
-    E --> B
-    E --> F[Strengthen canonical report<br/>while the next round runs]
-    D -->|No| G[Final revision and delivery]
-    F -. Same report .-> G
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/rounds-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/rounds.svg">
+  <img src="docs/rounds.svg" alt="The current session sets a research-round budget that defaults to one, plans each round, receives completed findings from Oracle, and uses those findings to adapt later rounds. While a later round runs, the session strengthens the same canonical report to final-draft quality using completed evidence; after the last return, it makes a final substantive revision and delivers the report." width="1120">
+</picture>
 
 **One canonical report is the default.** It is updated in place between rounds; additional canonical documents are created only when you ask. Per-round plans, raw reports, and metrics remain available as supporting history.
 
