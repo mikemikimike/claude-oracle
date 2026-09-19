@@ -114,6 +114,10 @@ directory. Inspect progress without starting models or waiting for the process:
 python -m claude_oracle --session-status research/oracle-topic-run1
 ```
 
+The status snapshot includes lifecycle, research outcome, checkpoint, usage, and
+live scout/organizer progress. Token fields are unavailable when the provider
+did not report usage; do not interpret missing usage as zero.
+
 ## Evolve the next round and the report
 
 After each round:

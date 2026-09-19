@@ -122,8 +122,10 @@ Without supplied prompts, the first round can use the Architect. Without `--sess
 `research_outcome` field is `unknown` while running, `complete` when all dispatched
 work succeeds, `partial` when a usable report includes failed or skipped work, and
 `failed` when the round cannot return research. Status also exposes `current_phase`,
-`progress`, `active_attempt`, `last_updated_at`, and `next_action`. These fields are
-runtime evidence, not a judgment about prose quality.
+`progress`, `active_attempt`, `last_updated_at`, and `next_action`. Progress is
+updated as scouts and organizers finish, so `--session-status` can be polled
+while a round is running. These fields are runtime evidence, not a judgment
+about prose quality.
 
 The caller records editorial progress explicitly after revising the canonical
 report: `session.checkpoint(revision="git-or-content-revision", through_round=1)`.
@@ -137,7 +139,7 @@ After launching each subsequent round, **strengthen the same `canonical.md` to f
 
 During round one, establish scope and known context without inventing research results. After the last round, make a final substantive revision incorporating its findings. Default to one canonical report throughout the session, including resumes; create additional canonical documents only when explicitly instructed. Raw round outputs are supporting evidence, not separate final reports.
 
-The runtime writes a scaffold once and then leaves the canonical report to the caller. It does not enforce editorial quality or determine when writing is complete. Deliver the report path, conclusions, unresolved questions, and total usage across rounds.
+The runtime writes a scaffold once and then leaves the canonical report to the caller. It does not enforce editorial quality or determine when writing is complete. Deliver the report path, conclusions, unresolved questions, and total usage across rounds. Usage fields are marked unavailable when the provider did not return token data; do not treat missing usage as zero.
 
 ### State and recovery
 
